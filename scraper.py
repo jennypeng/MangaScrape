@@ -6,6 +6,9 @@ from urlparse import urlsplit
 from bs4 import BeautifulSoup
 import mechanize
 import cookielib
+# pdf handler
+from reportlab.pdfgen import canvas
+from reportlab.lib.utils import ImageReader
 
 # Browser
 br = mechanize.Browser()
@@ -51,14 +54,36 @@ def getFiles(url):
     # try to download image
     try:
         imgData = urllib2.urlopen(imageSRC).read()
-        fileName = "page1.jpg" #change later
+        fileName = "page3.jpg" #change later
         output = open(fileName, 'wb')
         output.write(imgData)
         output.close()
-        #os.rename('/' + fileName, '/' + fileName)
+        #os.rename('/' + fileName, '/chapter1/' + fileName)
+        print "image downloaded"
     except:
-        print("why does this not work")
-
+        raise
+    # try to convert to pdf
+    try:
+        n = 0
+        for dirpath, dirnames, filenames in os.walk('\'):
+            PdfOutputFileName = "chapter2.pdf"
+            c = canvas.Canvas(PdfOutputFileName)
+            if n > 0:
+                for filename in filenames:
+                    LowerCaseFileName = filename.lower()
+                    if LowerCaseFileName.endswith(".jpg"):
+                        filepath = os.path.join(dirpath, filename)
+                        print(filepath)
+                        im = ImageReader(filepath)
+                        imagesize = im.getSize()
+                        c.setPageSize(imagesize)
+                        c.drawImage(filepath, 0, 0)
+                        c.showPage()
+                        c.save()
+            n = n + 1
+            print "PDF created" + PdfOutputFileName
+    except:
+        raise
 
 
 
