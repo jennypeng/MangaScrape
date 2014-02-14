@@ -56,45 +56,50 @@ def reprompt():
 Download the image located at imageSRC, and save into \series_name\chapter[chapter_num]\. 
 '''
 def getImage(src, chapter_num, series_name, page_num):
-    #while not src == "": # we w=set tge src ti e=tge enoty string when mechanize fails to find a next page in the chapter
-        #counter = 1 # start off at page 1 
     try:
+        print "downloading page", str(page_num), '...',
         imgData = urllib2.urlopen(src).read()
         fileName = "page" + str(page_num) + ".jpg" # keep a running count of what page we're on 
         output = open(fileName, 'wb')
         output.write(imgData)
         output.close()
-        os.rename('/' + fileName, '/' + series_name + '/chapter' + str(chapter_num) + "/" + fileName)
-        #counter += 1
-        #get the next image
-        #src = mechanize
-
-        #print "image downloaded"
+        print "done"
     except:
         raise
-    '''
+'''
+Get the page number from the file name for sorting purposes. 
+'''
+def pageNum(a):
+    return int(a.rsplit("page")[1].rsplit(".jpg")[0])
+'''
 Convert the images to a pdf.
 '''
-def convertPDF(chapter_num, seriess_name):
+def convertPDF(chapter_num, series_name):
     try:
-        n = 0
-        for dirpath, dirnames, filenames in os.walk('\\' + series_name + '\\chapter' + str(chapter_num) + "\\"): # the downloaded files are going to be in chapter directory 
+        n = 1
+        for dirpath, dirnames, filenames in os.walk("ROOT_PATH"):
             PdfOutputFileName = "chapter" + str(chapter_num) + ".pdf"
             c = canvas.Canvas(PdfOutputFileName)
-            if n > 0:
-                for filename in filenames:
+            if n == 1: 
+                filenames = sorted([name for name in filenames if name.endswith(".jpg")], key = pageNum)
+                for filename in filenames: 
+                    print "evaluating file name " + filename
                     LowerCaseFileName = filename.lower()
                     if LowerCaseFileName.endswith(".jpg"):
                         filepath = os.path.join(dirpath, filename)
-                        print(filepath)
+                        print "found page " + filename
                         im = ImageReader(filepath)
                         imagesize = im.getSize()
                         c.setPageSize(imagesize)
                         c.drawImage(filepath, 0, 0)
                         c.showPage()
                         c.save()
+                        try:
+                            os.remove(filepath)
+                        except WindowsError as e:
+                            print e
             n = n + 1
-            print "PDF created" + PdfOutputFileName
+            print "PDF created " + PdfOutputFileName
     except:
         raise
 
@@ -103,23 +108,29 @@ def getFiles(url, chapter_num):
     soup = BeautifulSoup(page)
     soup.prettify()
     imageSRC = soup.find('img', {'id': "image"}).get('src')
-    # try to download image
+    baseurl = url.rsplit("/", 1)[0] + "/"
     counter = 1
-    while not nextPage == "javascript:void(0)":
-        getImage(imageSRC, chapter_num, counter)
-        nextPage = soup.find('a', {'onclick': "return enlarge()"}).get('href')
+    nextPage = ""
+    while True:
+        getImage(imageSRC, chapter_num, "Koe no Katachi", counter)
+        imgLink = soup.find('a', {'onclick': "return enlarge()"})
+        if not imgLink: break
+        nextPage = imgLink.get('href')
         page = urllib2.urlopen(baseurl + nextPage)
         soup = BeautifulSoup(page)
         soup.prettify()
-        imageSRC = soup.find('img', {'id': "image"}).get('src')
+        imgLink = soup.find('img', {'id': "image"})
+        if not imgLink: break
+        imageSRC = imgLink.get('src')
         counter += 1
     # try to convert all images to pdf
-    convertPDF(chapter_num)
+    convertPDF(chapter_num, "Koe no Katachi")
     
 
 
 
 def openURL(url):
+    print("yooooo")
     r = br.open(url) # open our browser object to the comic page
     page = urllib2.urlopen(url).read()
     soup = BeautifulSoup(page)
@@ -139,17 +150,13 @@ def openURL(url):
         zero_pad_num = chapter_num.zfill(3)
         for chapter in soup.find_all('a', {'class': "tips"}):
             chapterURL = chapter.get('href')
-            query = 'c' + chapter_num
+            print chapterURL
+            query = 'c' + zero_pad_num
             if query in chapterURL:
                 print("found query at " + chapterURL)
-                getFiles(chapterURL, chapter_num, "test1")
+                getFiles(chapterURL, chapter_num) # rememeber to add name of title
                 break
                 
-
-
-    
-
-
 if __name__ == '__main__':
     prompt()
    
